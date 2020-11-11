@@ -35,6 +35,20 @@ mimic_fallback_obj = None
 _last_stop_signal = 0
 
 
+def _should_play_error(data):
+    config = Configuration.get()
+    config_skills = config.get('skills', {})
+    skills_sound_error = config_skills.get('skills_with_sound_as_error', [])
+    always_error_sound = config.get('error_as_sound', False)
+    message_skill = data.get('meta', {}).get('skill', [])
+    skill_error_sound = message_skill in skills_sound_error
+    utterrance_is_error = data.get('is_error', False)
+    if (always_error_sound or skill_error_sound) and utterrance_is_error:
+        return True
+    else:
+        return False
+
+
 def handle_speak(event):
     """Handle "speak" message
 
@@ -62,6 +76,7 @@ def handle_speak(event):
     with lock:
         stopwatch = Stopwatch()
         stopwatch.start()
+        play_error = _should_play_error(event.data)
         utterance = event.data['utterance']
         listen = event.data.get('expect_response', False)
         # This is a bit of a hack for Picroft.  The analog audio on a Pi blocks
@@ -73,7 +88,7 @@ def handle_speak(event):
         # TODO: Remove or make an option?  This is really a hack, anyway,
         # so we likely will want to get rid of this when not running on Mimic
         if (config.get('enclosure', {}).get('platform') != "picroft" and
-                len(re.findall('<[^>]*>', utterance)) == 0):
+                len(re.findall('<[^>]*>', utterance)) == 0) and not play_error:
             # Remove any whitespace present after the period,
             # if a character (only alpha) ends with a period
             # ex: A. Lincoln -> A.Lincoln
@@ -98,19 +113,21 @@ def handle_speak(event):
                 except Exception:
                     LOG.error('Error in mute_and_speak', exc_info=True)
         else:
-            mute_and_speak(utterance, ident, listen)
+            mute_and_speak(utterance, ident, listen, play_error)
 
         stopwatch.stop()
     report_timing(ident, 'speech', stopwatch, {'utterance': utterance,
                                                'tts': tts.__class__.__name__})
 
 
-def mute_and_speak(utterance, ident, listen=False):
+def mute_and_speak(utterance, ident, listen=False, play_error=False):
     """Mute mic and start speaking the utterance using selected tts backend.
 
     Arguments:
         utterance:  The sentence to be spoken
         ident:      Ident tying the utterance to the source query
+        listen:
+        play_error:   Set to true if you must play an error sound instead
     """
     global tts_hash
     # update TTS object if configuration has changed
@@ -126,7 +143,7 @@ def mute_and_speak(utterance, ident, listen=False):
 
     LOG.info("Speak: " + utterance)
     try:
-        tts.execute(utterance, ident, listen)
+        tts.execute(utterance, ident, listen, play_error)
     except RemoteTTSException as e:
         LOG.error(e)
         mimic_fallback_tts(utterance, ident, listen)

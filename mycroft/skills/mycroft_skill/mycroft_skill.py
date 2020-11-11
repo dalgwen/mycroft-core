@@ -1094,7 +1094,8 @@ class MycroftSkill:
         re.compile(regex)  # validate regex
         self.intent_service.register_adapt_regex(regex)
 
-    def speak(self, utterance, expect_response=False, wait=False, meta=None):
+    def speak(self, utterance, expect_response=False, wait=False, meta=None,
+              is_error=False):
         """Speak a sentence.
 
         Arguments:
@@ -1105,6 +1106,8 @@ class MycroftSkill:
             wait (bool):            set to True to block while the text
                                     is being spoken.
             meta:                   Information of what built the sentence.
+            is_error (bool):        Set to True if it's an error utterance.
+                                    Allow mycroft to replace it by a sound
         """
         # registers the skill as being active
         meta = meta or {}
@@ -1112,7 +1115,8 @@ class MycroftSkill:
         self.enclosure.register(self.name)
         data = {'utterance': utterance,
                 'expect_response': expect_response,
-                'meta': meta}
+                'meta': meta,
+                'is_error': is_error}
         message = dig_for_message()
         m = message.forward("speak", data) if message \
             else Message("speak", data)
@@ -1121,7 +1125,8 @@ class MycroftSkill:
         if wait:
             wait_while_speaking()
 
-    def speak_dialog(self, key, data=None, expect_response=False, wait=False):
+    def speak_dialog(self, key, data=None, expect_response=False, wait=False,
+                     is_error=False):
         """ Speak a random sentence from a dialog file.
 
         Arguments:
@@ -1133,12 +1138,16 @@ class MycroftSkill:
                                     speaking the utterance.
             wait (bool):            set to True to block while the text
                                     is being spoken.
+            is_error (bool):        Set to True if it's an error utterance.
+                                    Allow mycroft to replace it by a sound
         """
         if self.dialog_renderer:
             data = data or {}
             self.speak(
                 self.dialog_renderer.render(key, data),
-                expect_response, wait, meta={'dialog': key, 'data': data}
+                expect_response, wait, meta={'dialog': key,
+                                             'data': data},
+                is_error=is_error
             )
         else:
             self.log.warning(

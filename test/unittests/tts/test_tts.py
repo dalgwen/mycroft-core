@@ -191,7 +191,8 @@ class TestTTSFactory(unittest.TestCase):
         config = {
             'tts': {
                 'module': 'mock'
-            }
+            },
+            'sounds': {'dont_understand': 'none'}
         }
 
         mock_config.get.return_value = config

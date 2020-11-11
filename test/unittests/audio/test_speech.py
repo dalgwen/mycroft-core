@@ -72,8 +72,44 @@ class TestSpeech(unittest.TestCase):
                             context={'ident': 'a'})
         speech.handle_speak(speak_msg)
         tts_mock.execute.assert_has_calls(
-                [mock.call('hello there.', 'a', False),
-                 mock.call('world', 'a', False)])
+                [mock.call('hello there.', 'a', False, False),
+                 mock.call('world', 'a', False, False)])
+
+    def test_speak_errorsound_skill_conf(self, tts_factory_mock, config_mock):
+        """Ensure the speech handler executes the error sound instead of
+        the utterance."""
+        setup_mocks(config_mock, tts_factory_mock)
+        bus = mock.Mock()
+        speech.init(bus)
+        config_mock.get.return_value =\
+            {'skills': {'skills_with_sound_as_error': ['SpeechSkill']}}
+
+        speak_msg = Message('speak',
+                            data={'utterance': 'hello there. world',
+                                  'listen': False,
+                                  'meta': {'skill': 'SpeechSkill'},
+                                  'is_error': True},
+                            context={'ident': 'a'})
+        speech.handle_speak(speak_msg)
+        tts_mock.execute.assert_has_calls(
+                [mock.call('hello there. world', 'a', False, True)])
+
+    def test_speak_errorsound_global_conf(self, tts_factory_mock, config_mock):
+        """Ensure the speech handler executes the error sound instead of
+        the utterance."""
+        setup_mocks(config_mock, tts_factory_mock)
+        bus = mock.Mock()
+        speech.init(bus)
+        config_mock.get.return_value = {'error_as_sound': True}
+
+        speak_msg = Message('speak',
+                            data={'utterance': 'hello there. world',
+                                  'listen': False,
+                                  'is_error': True},
+                            context={'ident': 'a'})
+        speech.handle_speak(speak_msg)
+        tts_mock.execute.assert_has_calls(
+                [mock.call('hello there. world', 'a', False, True)])
 
     @mock.patch('mycroft.audio.speech.Mimic')
     def test_fallback_tts(self, mimic_cls_mock, tts_factory_mock, config_mock):
@@ -133,7 +169,7 @@ class TestSpeech(unittest.TestCase):
                             context={'ident': 'a'})
         speech.handle_speak(speak_msg)
         tts_mock.execute.assert_has_calls(
-                [mock.call('hello there. world', 'a', False)])
+                [mock.call('hello there. world', 'a', False, False)])
 
         config_mock.get.return_value = {}
 
