@@ -173,7 +173,7 @@ class TTS(metaclass=ABCMeta):
         self.phonetic_spelling = phonetic_spelling
         self.audio_ext = audio_ext
         self.ssml_tags = ssml_tags or []
-
+        self.audio_file_error = None
         self.voice = config.get("voice")
         self.filename = '/tmp/tts.wav'
         self.enclosure = None
@@ -302,7 +302,8 @@ class TTS(metaclass=ABCMeta):
         """
         return [sentence]
 
-    def execute(self, sentence, ident=None, listen=False):
+    def execute(self, sentence, ident=None, listen=False,
+                play_error_sound=False):
         """Convert sentence to speech, preprocessing out unsupported ssml
 
             The method caches results if possible using the hash of the
@@ -313,17 +314,25 @@ class TTS(metaclass=ABCMeta):
                 ident:      Id reference to current interaction
                 listen:     True if listen should be triggered at the end
                             of the utterance.
+                play_error_sound:   This utterance is an error. Depending on
+                            configuration, mycroft could play a sound
+                            instead
         """
+
         sentence = self.validate_ssml(sentence)
 
         create_signal("isSpeaking")
-        try:
-            self._execute(sentence, ident, listen)
-        except Exception:
-            # If an error occurs end the audio sequence through an empty entry
-            self.queue.put(EMPTY_PLAYBACK_QUEUE_TUPLE)
-            # Re-raise to allow the Exception to be handled externally as well.
-            raise
+
+        if play_error_sound:
+            self.queue.put(('wav', self.audio_file_error, None, ident, None))
+        else:
+            try:
+                self._execute(sentence, ident, listen)
+            except Exception:
+                # If an error occurs end the audio sequence with an empty entry
+                self.queue.put(EMPTY_PLAYBACK_QUEUE_TUPLE)
+                # Re-raise to allow the Exception to be handled externally.
+                raise
 
     def _execute(self, sentence, ident, listen):
         if self.phonetic_spelling:
@@ -513,10 +522,13 @@ class TTSFactory:
         tts_module = config.get('tts', {}).get('module', 'mimic')
         tts_config = config.get('tts', {}).get(tts_module, {})
         tts_lang = tts_config.get('lang', lang)
+        audio_file_error = resolve_resource_file(config.get('sounds')
+                                                 .get('dont_understand'))
         try:
             clazz = TTSFactory.CLASSES.get(tts_module)
             tts = clazz(tts_lang, tts_config)
             tts.validator.validate()
+            tts.audio_file_error = audio_file_error
         except Exception:
             # Fallback to mimic if an error occurs while loading.
             if tts_module != 'mimic':
