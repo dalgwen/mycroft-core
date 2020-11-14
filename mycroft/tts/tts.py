@@ -489,6 +489,7 @@ class TTSFactory:
     from mycroft.tts.dummy_tts import DummyTTS
     from mycroft.tts.polly_tts import PollyTTS
     from mycroft.tts.pico2wave_tts import Pico2Wave
+    from mycroft.tts.azure_tts import AzureTTS
 
     CLASSES = {
         "mimic": Mimic,
@@ -505,6 +506,7 @@ class TTSFactory:
         "yandex": YandexTTS,
         "polly": PollyTTS,
         "pico2wave": Pico2Wave,
+        "azure": AzureTTS,
         "dummy": DummyTTS
     }
 
