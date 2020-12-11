@@ -356,6 +356,16 @@ class SnowboyHotWord(HotWordEngine):
         return wake_word >= 1
 
 
+class DisabledHotword(HotWordEngine):
+    """A doing nothing hotword simulation
+    """
+    def __init__(self, key_phrase="hey mycroft", config=None, lang="en-us"):
+        super().__init__(key_phrase, config, lang)
+
+    def found_wake_word(self, frame_data):
+        return False
+
+
 class PorcupineHotWord(HotWordEngine):
     def __init__(self, key_phrase="hey mycroft", config=None, lang="en-us"):
         super(PorcupineHotWord, self).__init__(key_phrase, config, lang)
@@ -446,7 +456,8 @@ class HotWordFactory:
         "pocketsphinx": PocketsphinxHotWord,
         "precise": PreciseHotword,
         "snowboy": SnowboyHotWord,
-        "porcupine": PorcupineHotWord
+        "porcupine": PorcupineHotWord,
+        "disabled": DisabledHotword
     }
 
     @staticmethod
